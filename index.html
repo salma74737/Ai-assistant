@@ -104,6 +104,149 @@
     </div>
 
     <script>
+        // --- UPDATED CONFIGURATION ---
+        const API_KEY = "4c9373988a4f655b7427d6d785db5d93"; 
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        
+        const micBtn = document.getElementById('micBtn');
+        const statusText = document.getElementById('status');
+        const responseBox = document.getElementById('response-box');
+        const brain = document.getElementById('brain');
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'hi-IN'; 
+        recognition.continuous = false;
+
+        function speak(text, afterSpeakCallback = null) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+            const voice = voices.find(v => v.name.includes('Google हिन्दी') || v.name.includes('Hindi') || v.lang.includes('hi'));
+            if (voice) utterance.voice = voice;
+            utterance.rate = 1; 
+            utterance.pitch = 1.1;
+            utterance.onend = () => { if(afterSpeakCallback) afterSpeakCallback(); };
+            window.speechSynthesis.speak(utterance);
+        }
+
+        micBtn.addEventListener('click', () => {
+            micBtn.classList.add('active');
+            statusText.innerText = "Initializing...";
+            speak("Haan Sir, boliye", () => {
+                try {
+                    recognition.start();
+                    statusText.innerText = "Listening...";
+                    responseBox.innerText = "Listening...";
+                } catch (e) {
+                    console.error(e);
+                    micBtn.classList.remove('active');
+                }
+            });
+        });
+
+        recognition.onresult = async (event) => {
+            micBtn.classList.remove('active');
+            const userCommand = event.results[0][0].transcript;
+            statusText.innerText = "Processing Data...";
+            responseBox.innerText = `"${userCommand}"`;
+            brain.classList.add('processing');
+
+            const lowerCmd = userCommand.toLowerCase();
+            if (lowerCmd.includes("time") || lowerCmd.includes("samay") || lowerCmd.includes("baj")) {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+                finishRequest(`Sir, abhi ${timeString} ho raha hai.`);
+                return;
+            }
+            
+            await fetchGeminiResponse(userCommand);
+        };
+
+        async function fetchGeminiResponse(prompt) {
+            const currentTime = new Date().toLocaleString();
+            const systemInstruction = `You are MAYA, an advanced AI Assistant. Current Date & Time: ${currentTime}. User Role: Addressed as 'Sir'. Language: Hinglish. Give short, direct answers. No markdown.`;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: systemInstruction + "\nUser Question: " + prompt }] }],
+                        generationConfig: { temperature: 0.7, maxOutputTokens: 100 }
+                    })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+                const aiResponse = data.candidates[0].content.parts[0].text;
+                finishRequest(aiResponse);
+            } catch (error) {
+                console.error("Brain Error:", error);
+                finishRequest("Sir, server connect nahi ho raha. API key ya internet check karein.");
+            }
+        }
+
+        function finishRequest(text) {
+            brain.classList.remove('processing');
+            statusText.innerText = "Maya says:";
+            const cleanText = text.replace(/\*/g, '').trim();
+            responseBox.innerText = cleanText;
+            speak(cleanText);
+        }
+
+        recognition.onerror = () => {
+            micBtn.classList.remove('active');
+            statusText.innerText = "Error";
+            brain.classList.remove('processing');
+        };
+        
+        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    </script>
+</body>
+</html>
+        /* Mic Button */
+        .controls { position: absolute; bottom: 50px; z-index: 30; }
+        .mic-btn {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: rgba(0,0,0,0.6); border: 2px solid var(--neon-blue);
+            color: var(--neon-blue); font-size: 30px; cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
+            transition: 0.3s;
+        }
+        .mic-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 50px var(--neon-blue); }
+        .mic-btn.active { border-color: var(--neon-pink); color: var(--neon-pink); animation: shake 0.5s infinite; }
+
+        @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 50% { transform: translate(-1px, -2px) rotate(-1deg); } 100% { transform: translate(1px, -1px) rotate(1deg); } }
+
+        /* Processing State */
+        .processing .core-circle { border-color: var(--neon-pink); box-shadow: 0 0 60px var(--neon-pink); }
+    </style>
+</head>
+<body>
+
+    <div class="hud-container"></div>
+
+    <div class="brain-core" id="brain">
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="core-circle">
+            <i class="fa-solid fa-microchip" style="font-size: 50px; color: white;"></i>
+        </div>
+    </div>
+
+    <div class="ui-text">
+        <div class="maya-title">MAYA A.I. SYSTEM</div>
+        <p id="status">Online & Ready</p>
+        <p id="response-box">Tap the microphone to Initialize.</p>
+    </div>
+
+    <div class="controls">
+        <button class="mic-btn" id="micBtn"><i class="fa-solid fa-microphone"></i></button>
+    </div>
+
+    <script>
         // --- ADVANCED CONFIGURATION ---
         const API_KEY = "AIzaSyA0CTFfWNXIEOq-lQdPtqMUHv64IkAvmWM"; 
         // Using Gemini 1.5 Flash (Faster & Smarter)
