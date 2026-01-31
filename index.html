@@ -103,219 +103,6 @@
         </div>
 
         <div class="content">
-            <p id="status-text">Mic par click karke baat karein...</p>
-            <p id="ai-reply"></p>
-        </div>
-
-        <div class="bottom-nav">
-            <button class="icon-btn"><i class="fa-solid fa-keyboard"></i></button>
-            <div class="mic-box" id="micWrapper">
-                <div class="pulse"></div>
-                <button class="mic-btn" id="startBtn"><i class="fa-solid fa-microphone"></i></button>
-            </div>
-            <button class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-    </div>
-
-    <script>
-        // Updated API Key provided by user
-        const API_KEY = "AIzaSyAI-ozKUZaQTnEZ2t5wVa4PXODTSwGTbkQ";
-        
-        const startBtn = document.getElementById('startBtn');
-        const micWrapper = document.getElementById('micWrapper');
-        const statusText = document.getElementById('status-text');
-        const aiReply = document.getElementById('ai-reply');
-        const mainApp = document.getElementById('mainApp');
-
-        // Initial Speech Setup
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition;
-
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'hi-IN'; // Input Language
-            recognition.continuous = false;
-        } else {
-            alert("Sorry, apka browser speech recognition support nahi karta.");
-        }
-
-        // --- Human-Like Voice Output ---
-        function speak(text) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            const voices = window.speechSynthesis.getVoices();
-            
-            // Koshish karein Hindi voice dhundne ki, nahi to default use karein
-            const hindiVoice = voices.find(v => v.lang.includes('hi'));
-            if (hindiVoice) utterance.voice = hindiVoice;
-            
-            utterance.rate = 1.0; // Normal speed for natural feel
-            utterance.pitch = 1.0;
-            window.speechSynthesis.speak(utterance);
-        }
-
-        // --- Gemini AI Logic ---
-        async function getGeminiResponse(prompt) {
-            mainApp.classList.add('processing');
-            statusText.innerText = "Soch raha hoon...";
-
-            // "Human-like" Instruction (System Prompt)
-            const humanPrompt = `You are a friendly, funny, and casual AI buddy. 
-            Reply in Hinglish (Hindi mixed with English) exactly like a human friend does. 
-            Keep it short (max 2 sentences). Do not use markdown. 
-            User said: "${prompt}"`;
-
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: humanPrompt }] }]
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API Error: ${response.status}`);
-                }
-
-                const data = await response.json();
-                
-                // Safety check agar response empty ho
-                if (data.candidates && data.candidates[0].content) {
-                    const text = data.candidates[0].content.parts[0].text;
-                    aiReply.innerText = text;
-                    speak(text);
-                } else {
-                    aiReply.innerText = "Hmm, mujhe samajh nahi aaya. Phir se bolo?";
-                    speak("Hmm, mujhe samajh nahi aaya. Phir se bolo?");
-                }
-
-            } catch (err) {
-                console.error(err);
-                statusText.innerText = "Connection Error or Invalid Key";
-                aiReply.innerText = "Oops! Kuch gadbad hai. Shayad API key galat hai ya net slow hai.";
-                speak("Connection error ho gaya hai yaar.");
-            }
-            mainApp.classList.remove('processing');
-        }
-
-        // --- Mic Controls ---
-        startBtn.addEventListener('click', () => {
-            if (!recognition) return;
-            try {
-                recognition.start();
-                micWrapper.classList.add('listening');
-                statusText.innerText = "Sun raha hoon...";
-                aiReply.innerText = "";
-            } catch(e) { 
-                console.log("Mic restart"); 
-                recognition.stop();
-            }
-        });
-
-        if (recognition) {
-            recognition.onresult = (event) => {
-                micWrapper.classList.remove('listening');
-                const transcript = event.results[0][0].transcript;
-                statusText.innerText = "Aap: " + transcript;
-
-                // Simple Local Logic
-                if(transcript.toLowerCase().includes('time') || transcript.includes('samay') || transcript.includes('baj')) {
-                    const time = new Date().toLocaleTimeString('hi-IN', {hour:'2-digit', minute:'2-digit'});
-                    const msg = `Abhi ${time} ho raha hai dost.`;
-                    aiReply.innerText = msg;
-                    speak(msg);
-                } else {
-                    // Call AI
-                    getGeminiResponse(transcript);
-                }
-            };
-
-            recognition.onerror = (e) => {
-                micWrapper.classList.remove('listening');
-                statusText.innerText = "Error: " + e.error;
-            };
-
-            recognition.onspeechend = () => {
-                recognition.stop();
-                micWrapper.classList.remove('listening');
-            };
-        }
-
-        // Pre-load voices for smoother experience
-        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-
-    </script>
-</body>
-</html>
-        /* 3D Liquid Orb Section */
-        .orb-wrapper {
-            position: relative; width: 350px; height: 350px;
-            display: flex; justify-content: center; align-items: center;
-        }
-        .orb {
-            width: 250px; height: 250px;
-            background: linear-gradient(135deg, #4facfe, #00f2fe, #7028e4, #fb5e8b);
-            background-size: 200% 200%; border-radius: 50%;
-            filter: blur(2px); z-index: 2;
-            animation: morph 8s ease-in-out infinite, gradientMove 10s infinite;
-            box-shadow: inset -15px -15px 50px rgba(0,0,0,0.7), 0 0 60px rgba(79, 172, 254, 0.2);
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes morph {
-            0%, 100% { border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%; }
-            33% { border-radius: 70% 30% 46% 54% / 30% 39% 61% 70%; }
-            66% { border-radius: 50% 50% 34% 66% / 56% 68% 32% 44%; }
-        }
-        @keyframes gradientMove { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
-
-        /* Text Display Area */
-        .content { text-align: center; max-width: 700px; z-index: 10; }
-        #status-text { font-size: 24px; font-weight: 300; line-height: 1.4; color: #fff; }
-        #ai-reply { color: var(--primary); font-size: 18px; margin-top: 15px; min-height: 24px; }
-
-        /* Bottom Control Bar */
-        .bottom-nav {
-            width: 100%; max-width: 500px;
-            display: flex; justify-content: space-around; align-items: center;
-            margin-bottom: 30px;
-        }
-        .icon-btn {
-            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1);
-            width: 65px; height: 65px; border-radius: 20px;
-            color: white; font-size: 22px; cursor: pointer; backdrop-filter: blur(10px);
-        }
-
-        /* Mic Button & Ripple */
-        .mic-box { position: relative; display: flex; justify-content: center; align-items: center; }
-        .mic-btn {
-            width: 95px; height: 95px; background: var(--primary);
-            border: none; border-radius: 50%; font-size: 35px;
-            color: black; cursor: pointer; z-index: 5;
-            box-shadow: 0 10px 40px rgba(193, 255, 61, 0.5);
-        }
-        .pulse { position: absolute; width: 95px; height: 95px; border: 3px solid var(--primary); border-radius: 50%; opacity: 0; pointer-events: none; }
-
-        /* Active State Effects */
-        .listening .pulse { animation: ripple 1.5s infinite; }
-        .listening .orb { transform: scale(1.3); filter: blur(15px) brightness(1.2); }
-        .processing .orb { animation: morph 1s infinite alternate; filter: hue-rotate(90deg); }
-
-        @keyframes ripple { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(2.2); opacity: 0; } }
-
-    </style>
-</head>
-<body>
-
-    <div class="app-container" id="mainApp">
-        <div class="ai-badge">AI BUDDY ONLINE</div>
-
-        <div class="orb-wrapper">
-            <div class="orb" id="orb"></div>
-        </div>
-
-        <div class="content">
             <p id="status-text">Mic par click karke kuch bhi puchein...</p>
             <p id="ai-reply"></p>
         </div>
@@ -331,92 +118,129 @@
     </div>
 
     <script>
+        // Updated API Key
         const API_KEY = "AIzaSyAI-ozKUZaQTnEZ2t5wVa4PXODTSwGTbkQ";
+        
         const startBtn = document.getElementById('startBtn');
         const micWrapper = document.getElementById('micWrapper');
         const statusText = document.getElementById('status-text');
         const aiReply = document.getElementById('ai-reply');
         const mainApp = document.getElementById('mainApp');
 
-        // Check if protocol is safe
-        if (window.location.protocol === 'file:') {
-            alert("Warning: 'file://' mode mein Mic kaam nahi karega. Please use VS Code Live Server.");
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'hi-IN'; // Uses Hinglish mix if supported
+        } else {
+            alert("Browser Mic support nahi karta. Chrome use karein.");
         }
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'hi-IN';
-
+        // --- Human-Like Voice Logic ---
         function speak(text) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            // Google Hindi Female Voice filter
-            const femaleVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Female'));
-            if (femaleVoice) utterance.voice = femaleVoice;
-            utterance.rate = 1;
+            // Try to find a Hindi voice, else fallback
+            const hindiVoice = voices.find(v => v.lang.includes('hi'));
+            if (hindiVoice) utterance.voice = hindiVoice;
+            utterance.rate = 1.0;
             window.speechSynthesis.speak(utterance);
         }
 
+        // --- Gemini AI Logic with Better Error Handling ---
         async function getGeminiResponse(prompt) {
             mainApp.classList.add('processing');
+            statusText.innerText = "Soch raha hoon...";
+
+            // "Human-like" Persona Prompt
+            const systemPrompt = `You are a friendly Indian friend. 
+            Reply in casual Hinglish (Hindi + English mix). 
+            Be funny, short, and natural. Don't be robotic. 
+            User said: "${prompt}"`;
+
             try {
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt + " (Answer in 1-2 short sentences in Hindi)" }] }]
+                        contents: [{ parts: [{ text: systemPrompt }] }]
                     })
                 });
+
                 const data = await response.json();
-                const text = data.candidates[0].content.parts[0].text;
-                aiReply.innerText = text;
-                speak(text);
+
+                // Check for API Errors explicitly
+                if (!response.ok) {
+                    let errorMsg = data.error ? data.error.message : "API Error";
+                    throw new Error(errorMsg);
+                }
+
+                if (data.candidates && data.candidates[0].content) {
+                    const text = data.candidates[0].content.parts[0].text;
+                    aiReply.innerText = text;
+                    speak(text);
+                } else {
+                    aiReply.innerText = "Samajh nahi aaya, dubara bolo?";
+                    speak("Samajh nahi aaya, dubara bolo?");
+                }
+
             } catch (err) {
-                statusText.innerText = "API Error: Please check internet/key.";
+                console.error("Gemini Error:", err);
+                // Show EXACT error to user
+                if (err.message.includes("API key not valid")) {
+                    statusText.innerText = "Error: Invalid API Key. Nayi key banayein.";
+                    aiReply.innerText = "Ye API key kaam nahi kar rahi. Google AI Studio se nayi key lelo.";
+                    speak("API key galat hai dost.");
+                } else {
+                    statusText.innerText = "Error: " + err.message;
+                    aiReply.innerText = "Connection issue ya API error hai.";
+                }
             }
             mainApp.classList.remove('processing');
         }
 
         startBtn.addEventListener('click', () => {
-            try {
-                recognition.start();
-                micWrapper.classList.add('listening');
-                statusText.innerText = "Sun rahi hoon...";
-                aiReply.innerText = "";
-            } catch(e) { console.log("Mic already active"); }
+            if(recognition) {
+                try {
+                    recognition.start();
+                    micWrapper.classList.add('listening');
+                    statusText.innerText = "Sun raha hoon...";
+                    aiReply.innerText = "";
+                } catch(e) { console.log("Mic restart"); }
+            }
         });
 
-        recognition.onresult = (event) => {
-            micWrapper.classList.remove('listening');
-            const transcript = event.results[0][0].transcript;
-            statusText.innerText = "Aapne kaha: " + transcript;
+        if (recognition) {
+            recognition.onresult = (event) => {
+                micWrapper.classList.remove('listening');
+                const transcript = event.results[0][0].transcript;
+                statusText.innerText = "Aap: " + transcript;
 
-            // Local command for time
-            if(transcript.toLowerCase().includes('time') || transcript.includes('samay')) {
-                const time = new Date().toLocaleTimeString('hi-IN', {hour:'2-digit', minute:'2-digit'});
-                const msg = `Abhi samay ho raha hai ${time}`;
-                aiReply.innerText = msg;
-                speak(msg);
-            } else {
-                getGeminiResponse(transcript);
-            }
-        };
+                // Handle basic local commands
+                if(transcript.toLowerCase().includes('time') || transcript.includes('samay')) {
+                    const time = new Date().toLocaleTimeString('hi-IN', {hour:'2-digit', minute:'2-digit'});
+                    const msg = `Bhai abhi ${time} baj rahe hain.`;
+                    aiReply.innerText = msg;
+                    speak(msg);
+                } else {
+                    getGeminiResponse(transcript);
+                }
+            };
 
-        recognition.onerror = (e) => {
-            micWrapper.classList.remove('listening');
-            if(e.error === 'not-allowed') {
-                alert("Permission Error: Address bar mein 'Lock' icon par click karke Mic ALLOW karein.");
-            }
-            statusText.innerText = "Mic error: " + e.error;
-        };
+            recognition.onerror = (e) => {
+                micWrapper.classList.remove('listening');
+                statusText.innerText = "Mic Error: " + e.error;
+            };
 
-        recognition.onspeechend = () => {
-            recognition.stop();
-            micWrapper.classList.remove('listening');
-        };
+            recognition.onspeechend = () => {
+                recognition.stop();
+                micWrapper.classList.remove('listening');
+            };
+        }
 
-        // Pre-load voices
+        // Voice loader
         window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 
     </script>
