@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Assistant - Ultimate Fix</title>
+    <title>AI Assistant - Full Screen</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        :root { --primary: #C1FF3D; --bg: #000000; --error: #ff4b4b; }
+        :root { --primary: #C1FF3D; --bg: #000000; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
         
         body, html { 
@@ -17,6 +17,7 @@
             overflow: hidden; 
         }
 
+        /* Full Screen UI Container */
         .app-container {
             width: 100vw; height: 100vh;
             background: radial-gradient(circle at top right, #1a1a1a, #000);
@@ -26,15 +27,230 @@
             position: relative;
         }
 
+        /* Top Header */
         .ai-badge {
             background: var(--primary); color: black;
             padding: 10px 30px; border-radius: 40px;
             font-weight: 600; font-size: 16px;
             box-shadow: 0 0 30px rgba(193, 255, 61, 0.4);
-            transition: background 0.3s;
         }
-        .ai-badge.error { background: var(--error); color: white; box-shadow: 0 0 30px rgba(255, 75, 75, 0.4); }
 
+        /* 3D Liquid Orb Section */
+        .orb-wrapper {
+            position: relative; width: 350px; height: 350px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .orb {
+            width: 250px; height: 250px;
+            background: linear-gradient(135deg, #4facfe, #00f2fe, #7028e4, #fb5e8b);
+            background-size: 200% 200%; border-radius: 50%;
+            filter: blur(2px); z-index: 2;
+            animation: morph 8s ease-in-out infinite, gradientMove 10s infinite;
+            box-shadow: inset -15px -15px 50px rgba(0,0,0,0.7), 0 0 60px rgba(79, 172, 254, 0.2);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes morph {
+            0%, 100% { border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%; }
+            33% { border-radius: 70% 30% 46% 54% / 30% 39% 61% 70%; }
+            66% { border-radius: 50% 50% 34% 66% / 56% 68% 32% 44%; }
+        }
+        @keyframes gradientMove { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+
+        /* Text Display Area */
+        .content { text-align: center; max-width: 700px; z-index: 10; }
+        #status-text { font-size: 24px; font-weight: 300; line-height: 1.4; color: #fff; }
+        #ai-reply { color: var(--primary); font-size: 18px; margin-top: 15px; min-height: 24px; }
+
+        /* Bottom Control Bar */
+        .bottom-nav {
+            width: 100%; max-width: 500px;
+            display: flex; justify-content: space-around; align-items: center;
+            margin-bottom: 30px;
+        }
+        .icon-btn {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1);
+            width: 65px; height: 65px; border-radius: 20px;
+            color: white; font-size: 22px; cursor: pointer; backdrop-filter: blur(10px);
+        }
+
+        /* Mic Button & Ripple */
+        .mic-box { position: relative; display: flex; justify-content: center; align-items: center; }
+        .mic-btn {
+            width: 95px; height: 95px; background: var(--primary);
+            border: none; border-radius: 50%; font-size: 35px;
+            color: black; cursor: pointer; z-index: 5;
+            box-shadow: 0 10px 40px rgba(193, 255, 61, 0.5);
+        }
+        .pulse { position: absolute; width: 95px; height: 95px; border: 3px solid var(--primary); border-radius: 50%; opacity: 0; pointer-events: none; }
+
+        /* Active State Effects */
+        .listening .pulse { animation: ripple 1.5s infinite; }
+        .listening .orb { transform: scale(1.3); filter: blur(15px) brightness(1.2); }
+        .processing .orb { animation: morph 1s infinite alternate; filter: hue-rotate(90deg); }
+
+        @keyframes ripple { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(2.2); opacity: 0; } }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container" id="mainApp">
+        <div class="ai-badge">AI ASSISTANT ONLINE</div>
+
+        <div class="orb-wrapper">
+            <div class="orb" id="orb"></div>
+        </div>
+
+        <div class="content">
+            <p id="status-text">Hello Sir, main online hoon.</p>
+            <p id="ai-reply"></p>
+        </div>
+
+        <div class="bottom-nav">
+            <button class="icon-btn"><i class="fa-solid fa-keyboard"></i></button>
+            <div class="mic-box" id="micWrapper">
+                <div class="pulse"></div>
+                <button class="mic-btn" id="startBtn"><i class="fa-solid fa-microphone"></i></button>
+            </div>
+            <button class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+
+    <!-- Script Type is Module to support Import -->
+    <script type="module">
+        // Import Bytez.js from CDN
+        import Bytez from "https://esm.sh/bytez.js";
+
+        const BYTEZ_KEY = "4c9373988a4f655b7427d6d785db5d93";
+        let sdk;
+        let model;
+
+        // Initialize Bytez SDK
+        try {
+            sdk = new Bytez(BYTEZ_KEY);
+            model = sdk.model("google/gemini-3-pro-preview");
+            console.log("Bytez SDK Initialized");
+        } catch(e) {
+            console.error("SDK Init Error", e);
+        }
+
+        const startBtn = document.getElementById('startBtn');
+        const micWrapper = document.getElementById('micWrapper');
+        const statusText = document.getElementById('status-text');
+        const aiReply = document.getElementById('ai-reply');
+        const mainApp = document.getElementById('mainApp');
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'hi-IN'; 
+        } else {
+            alert("Mic support not available.");
+        }
+
+        // --- Voice Logic (Assistant Style) ---
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => v.lang.includes('hi')) || voices[0];
+            if (preferredVoice) utterance.voice = preferredVoice;
+            utterance.rate = 1.0; 
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- Bytez AI Logic ---
+        async function getBytezResponse(prompt) {
+            mainApp.classList.add('processing');
+            statusText.innerText = "Processing Sir...";
+
+            // Persona Instruction appended to prompt
+            const fullPrompt = `You are a helpful and polite AI Assistant. 
+            Address the user as 'Sir'. 
+            Reply in Hinglish (Hindi + English mix). 
+            User said: "${prompt}"`;
+
+            try {
+                if (!model) throw new Error("Model not initialized");
+
+                const { error, output } = await model.run([
+                    {
+                        "role": "user",
+                        "content": fullPrompt
+                    }
+                ]);
+
+                if (error) {
+                    throw new Error(error);
+                }
+
+                if (output) {
+                    // Extracting text from output (handling different response formats)
+                    let replyText = typeof output === 'string' ? output : (output[0]?.text || JSON.stringify(output));
+                    
+                    // Clean up if needed
+                    aiReply.innerText = replyText;
+                    speak(replyText);
+                } else {
+                    aiReply.innerText = "Sorry Sir, response nahi aaya.";
+                    speak("Sorry Sir, response nahi aaya.");
+                }
+
+            } catch (err) {
+                console.error("Bytez Error:", err);
+                statusText.innerText = "API Error";
+                aiReply.innerText = "Sir, connection error hai.";
+                speak("Sir, connection error hai.");
+            }
+            mainApp.classList.remove('processing');
+        }
+
+        startBtn.addEventListener('click', () => {
+            if(recognition) {
+                try {
+                    recognition.start();
+                    micWrapper.classList.add('listening');
+                    statusText.innerText = "Listening Sir...";
+                    aiReply.innerText = "";
+                } catch(e) { console.log("Mic restart"); }
+            }
+        });
+
+        if (recognition) {
+            recognition.onresult = (event) => {
+                micWrapper.classList.remove('listening');
+                const transcript = event.results[0][0].transcript;
+                statusText.innerText = "You: " + transcript;
+
+                if(transcript.toLowerCase().includes('time') || transcript.includes('samay')) {
+                    const time = new Date().toLocaleTimeString('hi-IN', {hour:'2-digit', minute:'2-digit'});
+                    const msg = `Sir, abhi time ${time} ho raha hai.`;
+                    aiReply.innerText = msg;
+                    speak(msg);
+                } else {
+                    getBytezResponse(transcript);
+                }
+            };
+
+            recognition.onerror = (e) => {
+                micWrapper.classList.remove('listening');
+                statusText.innerText = "Error: " + e.error;
+            };
+
+            recognition.onspeechend = () => {
+                recognition.stop();
+                micWrapper.classList.remove('listening');
+            };
+        }
+
+        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+
+    </script>
+</body>
+</html>
         .orb-wrapper {
             position: relative; width: 350px; height: 350px;
             display: flex; justify-content: center; align-items: center;
